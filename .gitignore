@@ -1,0 +1,6 @@
+# Ignore Temp SolidWorks Files
+~$*.SLDPRT
+~$*.SLDASM
+~$*.SLDDRW
+# Ignore Temp MS Office Files
+~$*.xlsx
