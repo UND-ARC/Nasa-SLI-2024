@@ -165,7 +165,52 @@ void setup() {
   delay(1000);
 *******/
 
-  Serial.println("Now we'll look for the the BNO055 IMU. Standby...");
+Serial.println("Now we'll look for the the BNO055 IMU. Standby...");
+  bno.begin();
+  Serial.println(bno.begin() ? "Found it! BNO055 connection successful." : "BNO055 connection failed :(");
+  delay(1000);
+  Serial.println();
+
+  if(bno.begin())
+  {
+    Serial.println("Here's a little bit of IMU data!");
+    /* Display some basic information on this sensor */
+    displaySensorDetails();
+     /* Optional: Display current status */
+    displaySensorStatus();
+
+    bno.setExtCrystalUse(true);
+
+    for (int i = 0; i <= 30; i++) 
+    {
+
+      /* Get a new sensor event */
+      sensors_event_t event;
+      bno.getEvent(&event);
+    
+      /* Display the floating point data */
+      Serial.print("X: ");
+      Serial.print(event.orientation.x, 4);
+      Serial.print("\tY: ");
+      Serial.print(event.orientation.y, 4);
+      Serial.print("\tZ: ");
+      Serial.print(event.orientation.z, 4);
+    
+      /* Optional: Display calibration status */
+      displayCalStatus();
+    
+      /* Optional: Display sensor status (debug only) */
+      //displaySensorStatus();
+
+      /* New line for the next sample */
+      Serial.println("");
+    
+      /* Wait the specified delay before requesting nex data */
+      delay(BNO055_SAMPLERATE_DELAY_MS);
+    }
+  }
+
+    /********** END OF IMU *************/
 
   //Now the SD card
   Serial.print("Looking for an SD card. Standby...");
