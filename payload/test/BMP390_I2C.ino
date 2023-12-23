@@ -1,5 +1,18 @@
 /***************************************************************************
- BMP390
+  This is a library for the BMP3XX temperature & pressure sensor
+
+  Designed specifically to work with the Adafruit BMP388 Breakout
+  ----> http://www.adafruit.com/products/3966
+
+  These sensors use I2C or SPI to communicate, 2 or 4 pins are required
+  to interface.
+
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing products
+  from Adafruit!
+
+  Written by Limor Fried & Kevin Townsend for Adafruit Industries.
+  BSD license, all text above must be included in any redistribution
  ***************************************************************************/
 
 #include <Wire.h>
@@ -7,9 +20,9 @@
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
 
-#define BMP_SCK 13 // SCL
+// #define BMP_SCK 13
 // #define BMP_MISO 12
-#define BMP_MOSI 11 // SDA?
+// #define BMP_MOSI 11
 // #define BMP_CS 10
 
 #define SEALEVELPRESSURE_HPA (1013.25)
