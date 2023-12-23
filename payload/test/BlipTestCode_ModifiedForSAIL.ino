@@ -78,6 +78,108 @@ int Pyro1 = 21;
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
+/**************************************************************************/
+/*
+    Displays some basic information on the BNO055 sensor from the unified
+    sensor API sensor_t type (see Adafruit_Sensor for more information)
+*/
+/**************************************************************************/
+void displaySensorDetails(void)
+{
+  sensor_t sensor;
+  bno.getSensor(&sensor);
+  Serial.println("------------------------------------");
+  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
+  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
+  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
+  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" xxx");
+  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" xxx");
+  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" xxx");
+  Serial.println("------------------------------------");
+  Serial.println("");
+  delay(500);
+}
+
+/**************************************************************************/
+/*
+    Display some basic info about the BNO055 sensor status
+*/
+/**************************************************************************/
+void displaySensorStatus(void)
+{
+  /* Get the system status values (mostly for debugging purposes) */
+  uint8_t system_status, self_test_results, system_error;
+  system_status = self_test_results = system_error = 0;
+  bno.getSystemStatus(&system_status, &self_test_results, &system_error);
+
+  /* Display the results in the Serial Monitor */
+  Serial.println("");
+  Serial.print("System Status: 0x");
+  Serial.println(system_status, HEX);
+  Serial.print("Self Test:     0x");
+  Serial.println(self_test_results, HEX);
+  Serial.print("System Error:  0x");
+  Serial.println(system_error, HEX);
+  Serial.println("");
+  delay(500);
+}
+
+/**************************************************************************/
+/*
+    Display BNO055 sensor calibration status
+*/
+/**************************************************************************/
+void displayCalStatus(void)
+{
+  /* Get the four calibration values (0..3) */
+  /* Any sensor data reporting 0 should be ignored, */
+  /* 3 means 'fully calibrated" */
+
+
+/* From Datasheet
+3.10.1 Accelerometer Calibration
+- Place the device in 6 different stable positions for a period of few seconds to allow the
+accelerometer to calibrate.
+- Make sure that there is slow movement between 2 stable positions
+- The 6 stable positions could be in any direction, but make sure that the device is lying at
+least once perpendicular to the x, y and z axis.
+- The register CALIB_STAT can be read to see the calibration status of the accelerometer.
+
+3.10.2 Gyroscope Calibration
+- Place the device in a single stable position for a period of few seconds to allow the
+gyroscope to calibrate
+- The register CALIB_STAT can be read to see the calibration status of the gyroscope.
+
+3.10.3 Magnetometer Calibration
+Magnetometer in general are susceptible to both hard-iron and soft-iron distortions, but
+majority of the cases are rather due to the former. And the steps mentioned below are to
+calibrate the magnetometer for hard-iron distortions.
+Nevertheless certain precautions need to be taken into account during the positioning of
+the sensor in the PCB which is described in our HSMI (Handling, Soldering and Mounting
+Instructions) application note to avoid unnecessary magnetic influences. */
+  
+  uint8_t system, gyro, accel, mag;
+  system = gyro = accel = mag = 0;
+  bno.getCalibration(&system, &gyro, &accel, &mag);
+
+  /* The data should be ignored until the system calibration is > 0 */
+  Serial.print("\t");
+  if (!system)
+  {
+    Serial.print("! ");
+  }
+
+  /* Display the individual values */
+  Serial.print("Sys:");
+  Serial.print(system, DEC);
+  Serial.print(" G:");
+  Serial.print(gyro, DEC);
+  Serial.print(" A:");
+  Serial.print(accel, DEC);
+  Serial.print(" M:");
+  Serial.print(mag, DEC);
+}
+
 void setup() {
   while(!Serial){
     //wait for the serial port to be available, comment this out before running on battery power!!!!
@@ -165,7 +267,7 @@ void setup() {
   delay(1000);
 *******/
 
-Serial.println("Now we'll look for the the BNO055 IMU. Standby...");
+  Serial.println("Now we'll look for the the BNO055 IMU. Standby...");
   bno.begin();
   Serial.println(bno.begin() ? "Found it! BNO055 connection successful." : "BNO055 connection failed :(");
   delay(1000);
@@ -181,21 +283,64 @@ Serial.println("Now we'll look for the the BNO055 IMU. Standby...");
 
     bno.setExtCrystalUse(true);
 
-    for (int i = 0; i <= 30; i++) 
-    {
+     /* Display the current temperature */
+    int8_t temp = bno.getTemp();
+    Serial.print("Current Temperature: ");
+    Serial.print(temp);
+    Serial.println(" C");
+    Serial.println("");
 
-      /* Get a new sensor event */
-      sensors_event_t event;
-      bno.getEvent(&event);
+    Serial.println("Calibration status values: 0=uncalibrated, 3=fully calibrated");
     
+    for (int i = 0; i <= 50; i++) 
+    {
+      // Possible vector values can be:
+      // - VECTOR_ACCELEROMETER - m/s^2
+      // - VECTOR_MAGNETOMETER  - uT
+      // - VECTOR_GYROSCOPE     - rad/s
+      // - VECTOR_EULER         - degrees
+      // - VECTOR_LINEARACCEL   - m/s^2
+      // - VECTOR_GRAVITY       - m/s^2
+      imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+      
       /* Display the floating point data */
       Serial.print("X: ");
-      Serial.print(event.orientation.x, 4);
-      Serial.print("\tY: ");
-      Serial.print(event.orientation.y, 4);
-      Serial.print("\tZ: ");
-      Serial.print(event.orientation.z, 4);
-    
+      Serial.print(euler.x());
+      Serial.print(" Y: ");
+      Serial.print(euler.y());
+      Serial.print(" Z: ");
+      Serial.print(euler.z());
+      Serial.print("\t\t");
+
+      /*
+      // Quaternion data
+      imu::Quaternion quat = bno.getQuat();
+      Serial.print("qW: ");
+      Serial.print(quat.w(), 4);
+      Serial.print(" qX: ");
+      Serial.print(quat.x(), 4);
+      Serial.print(" qY: ");
+      Serial.print(quat.y(), 4);
+      Serial.print(" qZ: ");
+      Serial.print(quat.z(), 4);
+      Serial.print("\t\t");
+      */
+
+      /* Display calibration status for each sensor. */
+      uint8_t system, gyro, accel, mag = 0;
+      bno.getCalibration(&system, &gyro, &accel, &mag);
+      Serial.print("CALIBRATION: Sys=");
+      Serial.print(system, DEC);
+      Serial.print(" Gyro=");
+      Serial.print(gyro, DEC);
+      Serial.print(" Accel=");
+      Serial.print(accel, DEC);
+      Serial.print(" Mag=");
+      Serial.println(mag, DEC);
+
+      /* Wait the specified delay before requesting nex data */
+      delay(BNO055_SAMPLERATE_DELAY_MS);
+         
       /* Optional: Display calibration status */
       displayCalStatus();
     
@@ -203,10 +348,8 @@ Serial.println("Now we'll look for the the BNO055 IMU. Standby...");
       //displaySensorStatus();
 
       /* New line for the next sample */
-      Serial.println("");
+    //  Serial.println("");
     
-      /* Wait the specified delay before requesting nex data */
-      delay(BNO055_SAMPLERATE_DELAY_MS);
     }
   }
 
