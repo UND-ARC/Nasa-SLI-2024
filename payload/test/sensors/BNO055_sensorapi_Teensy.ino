@@ -40,7 +40,7 @@
 
 // Check I2C device address and correct line below (by default address is 0x29 or 0x28)
 //                                   id, address
-Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
+Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28, &Wire);
 
 /**************************************************************************/
 /*
@@ -98,6 +98,33 @@ void displayCalStatus(void)
   /* Get the four calibration values (0..3) */
   /* Any sensor data reporting 0 should be ignored, */
   /* 3 means 'fully calibrated" */
+ 
+  /* From Datasheet
+3.10.1 Accelerometer Calibration
+- Place the device in 6 different stable positions for a period of few seconds to allow the
+  accelerometer to calibrate.
+- Make sure that there is slow movement between 2 stable positions
+- The 6 stable positions could be in any direction, but make sure that the device is lying at
+  least once perpendicular to the x, y and z axis.
+- The register CALIB_STAT can be read to see the calibration status of the accelerometer.
+
+3.10.2 Gyroscope Calibration
+- Place the device in a single stable position for a period of few seconds to allow the
+  gyroscope to calibrate
+- The register CALIB_STAT can be read to see the calibration status of the gyroscope.
+
+3.10.3 Magnetometer Calibration
+Compass, M4G & NDOF_FMC_OFF:
+- Make some random movements (ex: writing the number ‘8’ on air) until the
+  CALIB_STAT register indicates fully calibrated.
+- It takes more calibration movements to get the magnetometer calibrated than in the
+  NDOF mode. 
+NDOF:
+- The same random movements have to be made to calibrate the sensor as in the
+  FMC_OFF mode, but here it takes relatively less calibration movements (and slightly
+  higher current consumption) to get the magnetometer calibrated.
+- The register CALIB_STAT can be read to see the calibration status of the magnetometer.*/
+  
   uint8_t system, gyro, accel, mag;
   system = gyro = accel = mag = 0;
   bno.getCalibration(&system, &gyro, &accel, &mag);
