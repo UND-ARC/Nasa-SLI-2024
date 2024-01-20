@@ -45,7 +45,7 @@
         "silk_text_thickness": 0.15,
         "silk_text_upright": false,
         "zones": {
-          "min_clearance": 0.15
+          "min_clearance": 0.5
         }
       },
       "diff_pair_dimensions": [
@@ -412,7 +412,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "SAIL_PDB_1_0.kicad_pro",
+    "filename": "SAIL_PDB.kicad_pro",
     "version": 1
   },
   "net_settings": {
@@ -448,8 +448,8 @@
       "idf": "",
       "netlist": "",
       "specctra_dsn": "",
-      "step": "",
-      "vrml": ""
+      "step": "SAIL_PDB.step",
+      "vrml": "SAIL_PDB.wrl"
     },
     "page_layout_descr_file": ""
   },
