@@ -32,16 +32,24 @@ float initialAltitude = 0;  // Declare 'initialAltitude' at the global scope
 unsigned long apogeeTime = 0;  // Declare 'apogeeTime' at the global scope
 
 enum RocketState {
-  IDLE,
+  PAD_IDLE,
   LAUNCH_DETECT,
-  IN_FLIGHT,
+  BOOST,
+  BURNOUT,
+  COAST,
+  APOGEE,
+  DROGUE_DETECT,
   DROGUE_DESCENT,
-  DESCENT,
-  RECOVERY,
-  LANDING
+  MAIN_DETECT,
+  MAIN_DESCENT,
+  FAIRING_RELEASE,
+  SAIL_START,
+  SAIL_CONTROLLED_DESCENT,
+  LAND_DETECT,
+  LANDED
 };
 
-RocketState rocketState = IDLE;  // Initialize to IDLE state
+RocketState rocketState = PAD_IDLE;  // Initialize to IDLE state
 
 
 //create objects
@@ -51,7 +59,7 @@ void setup() {
   // put your setup code here, to run once:
 
   // Set initial state to IDLE
-  rocketState = IDLE;
+  rocketState = PAD_IDLE;
 
 }
 
@@ -69,11 +77,12 @@ bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
   bno.getEvent(&event);
   
   switch (rocketState) {
-    case IDLE:
+    case PAD_IDLE:
       // Check for acceleration above a threshold to detect liftoff
       if (event.acceleration.z >= LIFTOFF_ACCELERATION_THRESHOLD) {
         // Record the start time of acceleration
         liftoffStartTime = millis();
+        // If Acceleration detected, Go to LAUNCH_DETECT
         rocketState = LAUNCH_DETECT;
         Serial.println(rocketState = LAUNCH_DETECT);
       }
@@ -81,45 +90,94 @@ bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
 
     case LAUNCH_DETECT:
       // Continue reading acceleration data
+      // If Acceleration was brief, Back to PAD_IDLE
       // Check for sustained acceleration for a certain duration
       if ((millis() - liftoffStartTime) >= LIFTOFF_CONFIRMATION_DURATION) {
         // Rocket has liftoff, perform necessary actions
         // For example, trigger parachute deployment or log liftoff data
-        rocketState = IN_FLIGHT;
-        Serial.println(rocketState = IN_FLIGHT);
+        rocketState = BOOST;
+        Serial.println(rocketState = BOOST);
       }
       break;
 
-    case IN_FLIGHT:
-      // Check for altitude change to detect apogee
+    case BOOST:
+     // Your code for boost operations goes here
+     // No Acceleration -> Go to BURNOUT
+    break;
+
+    case BURNOUT:
+    // No Accel and Time Delay -> Go to COAST
+    // Acceleration Detected -> Back to BOOST
+    break;
+    
+    case COAST:
+    // Check for altitude change to detect apogee
       if (abs(bmp.readAltitude(SEALEVELPRESSURE_HPA) - initialAltitude) >= ALTITUDE_CHANGE_THRESHOLD) {
         // Apogee detected, record the time
         apogeeTime = millis();
-        rocketState = DESCENT;
-        Serial.println(rocketState = DESCENT);
+        rocketState = APOGEE;
+        Serial.println(rocketState = APOGEE);
       }
       break;
 
-    case DESCENT:
-      // Check for jerk to detect the drogue chute
+    case APOGEE:
+     // If Jerk Detected from IMU -> Go to DROGUE DETECT
       if (event.acceleration.z >= JERK_THRESHOLD) {
         // Jerk detected, switch to drogue descent
-        rocketState = DROGUE_DESCENT;
+        rocketState = DROGUE_DETECT;
       }
-      // Check for altitude to switch to drogue descent
-      else if (bmp.readAltitude(SEALEVELPRESSURE_HPA) <= DROGUE_DESCENT_ALTITUDE) {
+      break;
+
+    case DROGUE_DETECT:
+    // Check for altitude to switch to drogue descent
+      if (bmp.readAltitude(SEALEVELPRESSURE_HPA) <= DROGUE_DESCENT_ALTITUDE) {
         rocketState = DROGUE_DESCENT;
         Serial.println(rocketState = DROGUE_DESCENT);
       }
       break;
 
     case DROGUE_DESCENT:
-      // Perform actions for drogue descent
+    // Perform actions for drogue descent
+    // If Jerk Detected by IMU, Go to MAIN_DETECT
       break;
 
-    case LANDING:
-      // Your code for handling landing operations goes here
+    case MAIN_DETECT:
+      // Main expected to deploy at 600ft
+      // If Jerk Detected by Barometer, Go to MAIN_DESCENT
+          rocketState = MAIN_DESCENT;
+      // If Jerk NOT Detected by Barometer, Back to DROGUE_DESCENT
+          rocketState = DROGUE_DESCENT;
       break;
+
+    case MAIN_DESCENT:
+    // If GO message received, and <=400 ft -> Go to FAIRING_RELEASE
+      break;
+      
+    case FAIRING_RELEASE:
+    // If GO message received, and 400+-15 ft -> Cut Wire
+    // If accelerating and time delay, go to SAIL_OPERATION
+      break;
+
+    case SAIL_START:
+    // Landing leg activates for ~5 seconds
+    // Prop motor starts at _ Hz
+    // RWheel motor starts at _ Hz
+    // If velocity between 15-20ft/s, go to SAIL_CONTROLLED_DESCENT
+      break;
+
+     case SAIL_CONTROLLED_DESCENT:
+     // control system
+     // If Minimal Altitude change in 2 seconds, Go to Land Detect
+      break;
+
+     case LAND_DETECT:
+     // If Minimal Altitude change in 2 seconds, Go to LANDED
+     // If too much altitude change, Back to SAIL_CONTROLLED_DESCENT
+       
+     case LANDED:
+     // Your code for handling landing operations goes here
+     // Dump flash memory to SD Card
+      break;  
 
     // Add more states and transitions as needed
 
