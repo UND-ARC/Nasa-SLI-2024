@@ -12,8 +12,7 @@
 #define BUTTON_PIN 4 // Change to your button's pin
 // Define the LED pins
 #define ARM_LED_PIN 5 // LED for arming status (Solid when armed)
-#define GO_LED_PIN 6  // LED for "go" signal (Flashing when "go" signal sent)
-#define FEEDBACK_LED_PIN 7 // LED for feedback (Solid when feedback is received)
+#define SIGNAL_LED_PIN 6  // LED for "go" signal (Flashing when "go" signal sent)
 
 // Create an RF95 object
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
@@ -30,13 +29,11 @@ void setup() {
 
   // Initialize the LEDs
   pinMode(ARM_LED_PIN, OUTPUT);
-  pinMode(GO_LED_PIN, OUTPUT);
-  pinMode(FEEDBACK_LED_PIN, OUTPUT);
+  pinMode(SIGNAL_LED_PIN, OUTPUT);
 
   // Initialize the LEDs to their initial state
   digitalWrite(ARM_LED_PIN, LOW);
-  digitalWrite(GO_LED_PIN, LOW);
-  digitalWrite(FEEDBACK_LED_PIN, LOW);
+  digitalWrite(SIGNAL_LED_PIN, LOW);
 
   // Initialize the RF95 module
   if (!rf95.init()) {
@@ -82,7 +79,7 @@ void loop() {
       sendMessage("GO");
       goSignalSent = true;
       // Turn on the "go" LED (flashing)
-      flashLED(GO_LED_PIN);
+      flashLED(SIGNAL_LED_PIN);
     }
   }
 
@@ -96,7 +93,7 @@ void loop() {
       Serial.print("Received feedback: ");
       Serial.println((char*)buf);
       // Turn on the feedback LED (solid)
-      digitalWrite(FEEDBACK_LED_PIN, HIGH);
+      digitalWrite(SIGNAL_LED_PIN, HIGH);
     }
   }
 }
@@ -117,7 +114,7 @@ void sendMessage(const char* message) {
 
 void flashLED(int pin) {
   // Flash an LED connected to the specified pin
-  for (int i = 0; i < 5; i++) { // Flash 5 times
+  while (!feedbackReceived) {
     digitalWrite(pin, HIGH);
     delay(500); // On for 500ms
     digitalWrite(pin, LOW);

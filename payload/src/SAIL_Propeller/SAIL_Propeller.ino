@@ -18,6 +18,8 @@ float kd = 0.01; // Derivative gain
 float throttle;
 
 void setup() {
+  Serial.begin(9600);
+  
   // Initialize the ESC control
   pinMode(PROP_ESC, OUTPUT);
   digitalWrite(PROP_ESC, LOW); // Start with the motor off
@@ -52,6 +54,21 @@ void loop() {
   // Send throttle signal to ESC
   int throttle_pwm = map(throttle, 0, 100, 1000, 2000); // Map throttle to ESC pulse width
   analogWrite(PROP_ESC, throttle_pwm);
+
+  // Print debug information to the serial monitor
+  Serial.print("Desired Descent Rate: ");
+  Serial.print(DESCENT_RATE_SETPOINT);
+  Serial.print(" ft/s, Current Descent Rate: ");
+  Serial.print(currentDescentRate);
+  Serial.print(" ft/s, Throttle: ");
+  Serial.print(throttle);
+  Serial.print("%, P-Term: ");
+  Serial.print(p_term);
+  Serial.print(", I-Term: ");
+  Serial.print(i_term);
+  Serial.print(", D-Term: ");
+  Serial.print(d_term);
+  Serial.println();
 
   // Store the current descent rate as previous for the next iteration
   previous_descent_rate_error = descent_rate_error;
