@@ -1,5 +1,6 @@
 #include <Wire.h>
 #include <Adafruit_BMP3XX.h> // BMP390 Library
+#include <PulsePosition.h>  // Generates precise PWM signals for BLDC motors
 
 // Pin configuration for ESC
 const int PROP_ESC = 22;  // Connect the signal wire of ESC to digital pin 22
