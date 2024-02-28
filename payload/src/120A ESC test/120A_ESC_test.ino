@@ -31,7 +31,7 @@ void setup() {
 void loop() {
   // Example: Run motor at a low throttle setting for 1 second
   Serial.println("Running motor at low throttle...");
-  esc.writeMicroseconds(1200); // Adjust this value based on your ESC's requirements
+  esc.writeMicroseconds(1100); // Adjust this value based on your ESC's requirements
   delay(1000); // Motor runs at low throttle for 1 second
   
   // Stop the motor (or set to minimum throttle)
