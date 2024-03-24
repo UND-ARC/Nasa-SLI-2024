@@ -58,7 +58,7 @@ void PassLED() {
 void sendMessage(String message) {
   if (rf95.send((uint8_t *)message.c_str(), message.length())) {
     rf95.waitPacketSent();
-    Serial.println("Message sent successfully: " + message);
+    Serial.println("Message sent: " + message);
   } else {
     Serial.println("Message sending failed: " + message);
   }
