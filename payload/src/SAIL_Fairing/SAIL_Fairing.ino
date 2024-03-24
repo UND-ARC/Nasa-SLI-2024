@@ -12,9 +12,9 @@
 int PYRO = 13;
 
 //Set up the LEDs
-int R_LED = 19;
-int G_LED = 20;
-int B_LED = 21;
+int R_LED = 5;
+int G_LED = 6;
+int B_LED = 9;
 
 //This is for the BMP390 barometer
 Adafruit_BMP3XX bmp;
@@ -27,9 +27,9 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 void flashWhiteLED(int times, int duration) {
   for (int i = 0; i < times; i++) {
-    digitalWrite(LED_BUILTIN, HIGH); // Turn on LED (white)
+    digitalWrite(LED_BUILTIN, LOW); // Turn on LED (white)
     delay(duration);
-    digitalWrite(LED_BUILTIN, LOW); // Turn off LED
+    digitalWrite(LED_BUILTIN, HIGH); // Turn off LED
     delay(duration);
   }
 }
@@ -55,12 +55,14 @@ void PassLED() {
     digitalWrite(G_LED, HIGH);
 }
 
-void sendMessage(String message) {
+bool sendMessage(String message) {
   if (rf95.send((uint8_t *)message.c_str(), message.length())) {
     rf95.waitPacketSent();
-    Serial.println("Message sent: " + message);
+    Serial.println("Message sent successfully: " + message);
+    return true; // Message sent successfully 
   } else {
-    Serial.println("Message sending failed: " + message);
+    Serial.println("Message failed: " + message);
+    return false; // Message not sent due to activation state
   }
 }
 
@@ -131,7 +133,7 @@ void FireBelow400() {
 
 void setup() {
 
-  Serial.println("Fairing Controller Startup!.");
+  Serial.println("Fairing Controller Startup!");
 
   // Barometer Check
   Serial.println("Let's see if the BMP390 Barometer is connected. Standby...");

@@ -34,7 +34,7 @@ unsigned long debounceDelay = 50;    // the debounce time; increase if the outpu
 bool sendMessage(String message) {
   if (rf95.send((uint8_t *)message.c_str(), message.length())) {
     rf95.waitPacketSent();
-    Serial.println("Message sent: " + message);
+    Serial.println("Message sent successfully: " + message);
     return true; // Message sent successfully 
   } else {
     Serial.println("Message failed: " + message);
@@ -177,7 +177,7 @@ void loop() {
     activationState = false; // ARM button is not pressed, set activationState to false
   }
 
-  delay(200); // Wait 1 second between transmits, could also 'sleep' here!
+  delay(100); // Wait 1 second between transmits, could also 'sleep' here!
   
   // Check if activation state is true (arm button is pressed)
   if (activationState) {
