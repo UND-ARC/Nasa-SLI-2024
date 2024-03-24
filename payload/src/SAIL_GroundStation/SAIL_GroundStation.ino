@@ -10,11 +10,11 @@
 #define RFM95_INT               3
 #define RFM95_RST               4
 
-const int BUTTON_GO_PIN          = 13;  // Pin for "Go" button
-const int BUTTON_NOGO_PIN        = 12;  // Pin for "No-Go" button
-const int BUTTON_FORCE_OPEN_PIN = 11;  // Pin for "Force Fairing Open" button
-const int BUTTON_BEGIN_DESCENT_PIN = 10;  // Pin for "Begin Controlled Descent" button
-const int ACTIVATE_BUTTON_PIN    = 9;   // Pin for the button to activate states
+const int BUTTON_GO_PIN          = 10;  // Pin for "Go" button
+const int BUTTON_NOGO_PIN        = 11;  // Pin for "No-Go" button
+const int BUTTON_FORCE_OPEN_PIN = 12;  // Pin for "Force Fairing Open" button
+const int BUTTON_BEGIN_DESCENT_PIN = 9;  // Pin for "Begin Controlled Descent" button
+const int ARM_BUTTON_PIN    = 6;   // Pin for the button to activate states
 
 //define system led pins
 int R_LED = 9;
@@ -32,13 +32,12 @@ unsigned long lastDebounceTime = 0;  // the last time the button input pin was t
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 
 bool sendMessage(String message) {
-  if (activationState) {
-    rf95.send((uint8_t *)message.c_str(), message.length());
+  if (rf95.send((uint8_t *)message.c_str(), message.length())) {
     rf95.waitPacketSent();
     Serial.println("Message sent: " + message);
-    return true; // Message sent successfully
+    return true; // Message sent successfully 
   } else {
-    Serial.println("Activation button not pressed!");
+    Serial.println("Message failed: " + message);
     return false; // Message not sent due to activation state
   }
 }
@@ -66,7 +65,7 @@ void setup() {
   pinMode(BUTTON_NOGO_PIN, INPUT);
   pinMode(BUTTON_FORCE_OPEN_PIN, INPUT);
   pinMode(BUTTON_BEGIN_DESCENT_PIN, INPUT);
-  pinMode(ACTIVATE_BUTTON_PIN, INPUT);
+  pinMode(ARM_BUTTON_PIN, INPUT);
 
   //set system led pins as outputs
   pinMode(R_LED, OUTPUT);
@@ -83,6 +82,7 @@ void setup() {
   delay(100);
   
   Serial.println("Feather LoRa Ground Station Startup!");
+  delay(1000);
 
   // manual reset
   digitalWrite(RFM95_RST, LOW);
@@ -96,6 +96,7 @@ void setup() {
     while (1);
   }
   Serial.println("LoRa radio init OK!");
+  delay(1000);
 
   // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
   if (!rf95.setFrequency(RF95_FREQ)) {
@@ -103,6 +104,7 @@ void setup() {
     while (1);
   }
   Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
+  delay(1000);
 
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
@@ -115,10 +117,12 @@ void setup() {
 
   // Send a message to SAIL
   sendMessage("Hello SAIL");
+  delay(500);
 
   // Send a message to Fairing
   sendMessage("Hello Fairing");
-
+  delay(500);
+  
   // After sending "Hello SAIL" message
   Serial.println("Waiting for SAIL to reply...");
   uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
@@ -152,112 +156,75 @@ void setup() {
   } else {
       Serial.println("No reply received from Fairing");
   }
+  delay(500);
+
+Serial.println("Setup Complete");
 }
 
 void loop() {
-
-  // Read the state of the activation button
-  int activateButtonState = digitalRead(ACTIVATE_BUTTON_PIN);
-  activationState = (activateButtonState == HIGH); // Update activation state based on button press
-
-  // Check if the button is pressed and activate the effect
-  if (activateButtonState == HIGH && activationState == false) {
-    lastDebounceTime = millis();
-    activationState = true;
-  } else if (activateButtonState == HIGH && activationState == true) {
-    // Check if the button is held down for more than the debounce delay
-    if ((millis() - lastDebounceTime) > debounceDelay) {
-      // Fast blinking white effect
-      digitalWrite(R_LED, LOW);
-      digitalWrite(G_LED, LOW);
-      digitalWrite(B_LED, LOW);
-      delay(100);
-      digitalWrite(R_LED, HIGH);
-      digitalWrite(G_LED, HIGH);
-      digitalWrite(B_LED, HIGH);
-      delay(100);
-    }
-  } else {
-    // Reset activation state if button is released
-    activationState = false;
-  }
   
   // Read the state of each button
+  int armButtonState = digitalRead(ARM_BUTTON_PIN);
   int goButtonState = digitalRead(BUTTON_GO_PIN);
   int noGoButtonState = digitalRead(BUTTON_NOGO_PIN);
   int forceOpenButtonState = digitalRead(BUTTON_FORCE_OPEN_PIN);
   int beginDescentButtonState = digitalRead(BUTTON_BEGIN_DESCENT_PIN);
 
-  delay(1000); // Wait 1 second between transmits, could also 'sleep' here!
- /*  
-  Serial.println("Transmitting..."); // Send a message to rf95_server
-
- 
-  char radiopacket[18] = "Hello SAIL! #    ";
-  itoa(packetnum++, radiopacket+13, 10);
-  Serial.print("Sending "); Serial.println(radiopacket);
-  radiopacket[19] = 0;
-
-  Serial.println("Sending...");
-  delay(10);
-  rf95.send((uint8_t *)radiopacket, 20);
-
-  Serial.println("Waiting for packet to complete...");
-  delay(10);
-  rf95.waitPacketSent();
-    // Now wait for a reply
-  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
-  
-  Serial.println("Waiting for SAIL to reply...");
-  if (rf95.waitAvailableTimeout(1000)) {
-    // Should be a reply message for us now
-    if (rf95.recv(buf, &len)) {
-      Serial.print("Got reply: ");
-      Serial.println((char*)buf);
-      Serial.print("RSSI: ");
-      Serial.println(rf95.lastRssi(), DEC);
-    } else {
-      Serial.println("Receive failed");
-    }
+  // Check if ARM button is pressed and update activationState accordingly
+  if (armButtonState == LOW) {
+    activationState = true;  // ARM button is pressed, set activationState to true
   } else {
-    Serial.println("No reply, is SAIL around?");  // NTS: Do not want this to loop
-  }  */
-
-  // If activation button is pressed, send the corresponding command
-  if (activationState) {
-    if (goButtonState == LOW) {
-      sendMessage("Go");
-      digitalWrite(G_LED, LOW);
-      delay(2000);
-      digitalWrite(G_LED, HIGH);
-      delay(1000); // Debounce delay
-    } else if (noGoButtonState == LOW) {
-      sendMessage("No-Go");
-      digitalWrite(R_LED, LOW);
-      delay(2000);
-      digitalWrite(R_LED, HIGH);
-      delay(1000); // Debounce delay
-    } else if (forceOpenButtonState == LOW) {
-      sendMessage("Force Fairing Open");
-      digitalWrite(B_LED, LOW);
-      delay(500);
-      digitalWrite(B_LED, HIGH);
-      delay(500);
-      digitalWrite(B_LED, LOW);
-      delay(500);
-      digitalWrite(B_LED, HIGH);
-      delay(1000); // Debounce delay
-    } else if (beginDescentButtonState == LOW) {
-      sendMessage("Begin Controlled Descent");
-      digitalWrite(G_LED, LOW);
-      delay(500);
-      digitalWrite(G_LED, HIGH);
-      delay(500);
-      digitalWrite(G_LED, LOW);
-      delay(500);
-      digitalWrite(G_LED, HIGH);
-      delay(1000); // Debounce delay
-    }
+    activationState = false; // ARM button is not pressed, set activationState to false
   }
+
+  delay(200); // Wait 1 second between transmits, could also 'sleep' here!
+  
+  // Check if activation state is true (arm button is pressed)
+  if (activationState) {
+    // If activation button is pressed, send the corresponding command
+    if (armButtonState == LOW) {
+      Serial.println("ARM button pressed!");
+      if (goButtonState == LOW) {
+        sendMessage("Go");
+        digitalWrite(G_LED, LOW);
+        delay(2000);
+        digitalWrite(G_LED, HIGH);
+        delay(1000); // Debounce delay
+      } else if (noGoButtonState == LOW) {
+        sendMessage("No-Go");
+        digitalWrite(R_LED, LOW);
+        delay(2000);
+        digitalWrite(R_LED, HIGH);
+        delay(1000); // Debounce delay
+      } else if (forceOpenButtonState == LOW) {
+        sendMessage("Force Fairing Open");
+        digitalWrite(B_LED, LOW);
+        delay(500);
+        digitalWrite(B_LED, HIGH);
+        delay(500);
+        digitalWrite(B_LED, LOW);
+        delay(500);
+        digitalWrite(B_LED, HIGH);
+        delay(1000); // Debounce delay
+      } else if (beginDescentButtonState == LOW) {
+        sendMessage("Begin Controlled Descent");
+        digitalWrite(G_LED, LOW);
+        delay(500);
+        digitalWrite(G_LED, HIGH);
+        delay(500);
+        digitalWrite(G_LED, LOW);
+        delay(500);
+        digitalWrite(G_LED, HIGH);
+        delay(1000); // Debounce delay
+      }
+  } else {
+    // If activation button is not pressed, print the message
+    Serial.println("Activation button not pressed!");
+  }
+  } else {
+  // If arm button is not pressed, print the message for any command button press
+  if (goButtonState == LOW || noGoButtonState == LOW || forceOpenButtonState == LOW || beginDescentButtonState == LOW) {
+    Serial.println("Activation button not pressed!");
+  }
+}
 }
