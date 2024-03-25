@@ -9,13 +9,10 @@
 #include <SPI.h>
 #include <SdFat.h>
 #include <Adafruit_SPIFlash.h>
-//#include <Adafruit_BMP280.h> 
 #include <Adafruit_BNO055.h>
 #include <Adafruit_Sensor.h>
 #include <utility/imumaths.h>
 #include <Servo.h>
-// #include "I2Cdev.h"
-//#include "MPU6050.h"
 #include "Adafruit_BMP3XX.h"
 #include <RH_RF95.h>
 
@@ -30,15 +27,6 @@ Adafruit_BMP3XX bmp;
 double inHg = 29.92; // enter altimiter value
 double hPa = inHg * 33.8639;
 #define SEALEVELPRESSURE_HPA (hPa) // default: 1013.25
-
-//This is for the BMP390 barometer
-//Adafruit_BMP280 bmp;
-
-//This is for the MPU6050 IMU
-//MPU6050 accelgyro;
-//int16_t ax, ay, az;
-//int16_t gx, gy, gz;
-//#define OUTPUT_READABLE_ACCELGYRO
 
 // For the BNO055 IMU, Check I2C device address and correct line below (by default address is 0x29 or 0x28)
 //                                   id, address
@@ -82,17 +70,15 @@ RH_RF95 rf95(RFM95_CS);
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
 void goodTone() { 
-  tone(Buzzer, 988); delay(50); noTone(Buzzer); delay(75);
   tone(Buzzer, 988); delay(50); noTone(Buzzer); delay(200);
-  tone(Buzzer, 2093); delay(50); noTone(Buzzer); delay(75);
+  tone(Buzzer, 988); delay(50); noTone(Buzzer); delay(200);
   tone(Buzzer, 2093); delay(100); noTone(Buzzer); delay(400);
 }
 
 void badTone() {
-  tone(Buzzer, 2093); delay(50); noTone(Buzzer); delay(75);
   tone(Buzzer, 2093); delay(50); noTone(Buzzer); delay(200);
-  tone(Buzzer, 1000); delay(50); noTone(Buzzer); delay(75);
-  tone(Buzzer, 1000); delay(100); noTone(Buzzer); delay(400);
+  tone(Buzzer, 2093); delay(50); noTone(Buzzer); delay(200);
+  tone(Buzzer, 988); delay(50); noTone(Buzzer); delay(400);
 }
 
 void warningTone() {
@@ -225,11 +211,11 @@ void setup() {
 
   //Now Barometer
   Serial.println("First, let's see if the BMP390 Barometer is connected. Standby...");
-  delay(2000);
+  delay(1000);
   if (!bmp.begin_I2C()) {
     Serial.println("Could not find the BMP390 sensor :( Check your soldering and inspect for bad connections");
     badTone();
-    delay(3000);
+    delay(1000);
     Serial.println();
     Serial.println("Proceeding with the rest of the startup process");
     Serial.println();
@@ -390,7 +376,7 @@ void setup() {
     /********** END OF IMU *************/
 
   //Now the SD card
-  delay(2000);
+  delay(1000);
   Serial.print("Looking for an SD card. Standby...");
   if (!card.init(SPI_HALF_SPEED, SDchipSelect)) {
     Serial.println();
@@ -400,7 +386,7 @@ void setup() {
     Serial.println("* is the chipselect pin correct?");
     badTone();
     Serial.println();
-    delay(3000);
+    delay(2000);
     Serial.println();
     Serial.println("We'll continue with the startup without the SD card now :(");
     Serial.println();
@@ -511,7 +497,7 @@ void setup() {
      Serial.print(flash.size() / 1024);
      Serial.println(" KB");
      Serial.println();
-     delay(2000);        
+     delay(1000);        
    }
    else{
       delay(500);
@@ -520,10 +506,10 @@ void setup() {
       Serial.println(" - Is the chip soldered on in the correct orientation?");
       Serial.println(" - Is the correct chip select pin defined?");
       badTone();
-      delay(5000);
+      delay(2000);
       Serial.println();
       Serial.println("Proceding with the rest of the startup process");
-      delay(2000);
+      delay(1000);
       Serial.println();
   }
 
@@ -564,7 +550,7 @@ void setup() {
     Serial.println("setFrequency success");
     Serial.println();
   }
-    delay(2000);
+    delay(1000);
 
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
@@ -620,9 +606,53 @@ void setup() {
 
   /******* END OF RADIO TEST *******/
   
+
+  Serial.println("Now let's test the LEDs");
+  digitalWrite(R_LED, LOW);
+  delay(500);
+  digitalWrite(R_LED, HIGH);
+  delay(500);
+
+  digitalWrite(G_LED, LOW);
+  delay(500);
+  digitalWrite(G_LED, HIGH);
+  delay(500);
+
+  digitalWrite(B_LED, LOW);
+  delay(500);
+  digitalWrite(B_LED, HIGH);
+  delay(1000);
+  Serial.println("LED test complete!");
+  delay(1000);
+
+
+  //Test pyro channels
+  Serial.println();
+  Serial.println("To finish up here, let's test the pyro channel");
+  Serial.println();
+  pinMode(Pyro1, OUTPUT);
+  digitalWrite(Pyro1, LOW);
+  delay(1000);
+
+          //The following code MUST BE REMOVED before you connect anything to the pyro channels
+          Serial.println("We'll turn pyro on for 2 seconds");
+          delay(1000);
+          digitalWrite(Pyro1, HIGH);
+          Serial.println("Pyro 1 is on!");
+          warningTone();
+          delay(2000);
+          digitalWrite(Pyro1, LOW);
+          Serial.println("Pyro 1 is off");
+          delay(2000);
   
-  //Now we'll test the buzzer and the LEDs
-  Serial.println("Cool beans! Let's see if the buzzer works.");
+  Serial.println();
+  Serial.println("Done with the pyro channel testing");
+  Serial.println();
+  Serial.println();
+  delay(1000);
+
+    //Now we'll test the buzzer and the LEDs
+  Serial.println("SAIL Diagnostics Complete!");
   delay(500);
   tone(Buzzer, 2000); delay(50); noTone(Buzzer); delay(75);
   tone(Buzzer, 2000); delay(50); noTone(Buzzer); delay(200);
@@ -649,52 +679,6 @@ void setup() {
     slide = slide - 40;
   }
   noTone(Buzzer);
-
-  Serial.println("Now let's test the LEDs");
-  digitalWrite(R_LED, LOW);
-  delay(500);
-  digitalWrite(R_LED, HIGH);
-  delay(500);
-
-  digitalWrite(G_LED, LOW);
-  delay(500);
-  digitalWrite(G_LED, HIGH);
-  delay(500);
-
-  digitalWrite(B_LED, LOW);
-  delay(500);
-  digitalWrite(B_LED, HIGH);
-  delay(1000);
-  Serial.println("Great, the LEDs work. Done!");
-  delay(1000);
-
-
-  //Test pyro channels
-  Serial.println();
-  Serial.println("To finish up here, let's test the pyro channel");
-  Serial.println();
-  pinMode(Pyro1, OUTPUT);
-  digitalWrite(Pyro1, LOW);
-  delay(1000);
-
-          //The following code MUST BE REMOVED before you connect anything to the pyro channels
-          Serial.println("We'll now cycle through each channel, turning each one on for 2 seconds");
-          delay(1000);
-          digitalWrite(Pyro1, HIGH);
-          Serial.println("Pyro 1 is on!");
-          warningTone();
-          delay(2000);
-          digitalWrite(Pyro1, LOW);
-          Serial.println("Pyro 1 is off");
-          delay(2000);
-  
-  Serial.println();
-  Serial.println("Done with the pyro channel testing");
-  Serial.println();
-  Serial.println();
-  delay(1000);
-  Serial.println("SAIL Diagnostics Complete!");
-  
 }
 
 void loop() {
@@ -715,29 +699,3 @@ void loop() {
   delay(1000);
 
 }
-
-
-//The MPU6050 setup code is from the I2Cdev lib under the MIT licence
-//Copyright (c) 2011 Jeff Rowberg
-/*
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of the MPU6050 portion and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-This does not invalidate the header comments regarding the entire program,
-but refers only to the IMU portion of the code.
-*/
-
-/*
-void clearprintBuffer()
-{
-  for (uint8_t i = 0; i < 128; i++) {
-    printBuffer[i] = 0;
-  }
-} */
