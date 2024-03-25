@@ -85,6 +85,17 @@ void warningTone() {
   tone(Buzzer, 1000); delay(2000); noTone(Buzzer); delay(400);
 }
 
+bool sendMessage(String message) {
+  if (rf95.send((uint8_t *)message.c_str(), message.length())) {
+    rf95.waitPacketSent();
+    Serial.println("Message sent successfully: " + message);
+    return true; // Message sent successfully 
+  } else {
+    Serial.println("Message failed: " + message);
+    return false; // Message not sent due to activation state
+  }
+}
+
 /**************************************************************************/
 /*
     Displays some basic information on the BNO055 sensor from the unified
@@ -194,7 +205,7 @@ void setup() {
   Serial.println();Serial.println();
   Serial.println("Hey! I'm the SAIL flight computer! Let's get started.");
   goodTone();
-  delay(500);
+  delay(200);
   badTone();
   Serial.println();Serial.println();
   delay(1000);
@@ -215,7 +226,7 @@ void setup() {
   if (!bmp.begin_I2C()) {
     Serial.println("Could not find the BMP390 sensor :( Check your soldering and inspect for bad connections");
     badTone();
-    delay(1000);
+    delay(2000);
     Serial.println();
     Serial.println("Proceeding with the rest of the startup process");
     Serial.println();
@@ -258,30 +269,6 @@ void setup() {
     delay(200);
   }
 }
-
- /********* 
-  //Now the IMU
-  //Serial.println("Now we'll look for the the MPU6050 IMU. Standby...");
- 
-  accelgyro.initialize();
-  Serial.println(accelgyro.testConnection() ? "Found it! MPU6050 connection successful." : "MPU6050 connection failed :(");
-  delay(1000);
-  Serial.println();
-  Serial.println("Here's a little bit of data!");
-  for (int i = 0; i <= 20; i++) {
-    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    Serial.print("a/g:\t");
-    Serial.print(ax); Serial.print("\t");
-    Serial.print(ay); Serial.print("\t");
-    Serial.print(az); Serial.print("\t");
-    Serial.print(gx); Serial.print("\t");
-    Serial.print(gy); Serial.print("\t");
-    Serial.println(gz);
-    delay(20);
-  }
-  Serial.println("Great! Onward to the SD card");
-  delay(1000);
-*******/
 
   Serial.println("Now we'll look for the the BNO055 IMU. Standby...");
   bno.begin();
