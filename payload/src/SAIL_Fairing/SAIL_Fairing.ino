@@ -85,12 +85,13 @@ void awaitSignal() {
         // Handle Go signal
         sendMessage("Go signal received, firing at 400ft AGL");
         FireBelow400; // Check altitude for pyro trigger
+         
+      } else if (strcmp((char*)buf, "Check") == 0) {        
+        Serial.println("Check signal received.");
+        // Handle Check signal
+        sendMessage("Still read you loud and clear, Huntsville");
         
-      } else if (strcmp((char*)buf, "No-Go") == 0) {        
-        Serial.println("No-Go signal received.");
-        // Handle No-Go signal
-      
-      } else if (strcmp((char*)buf, "Force Open") == 0) {
+      }  else if (strcmp((char*)buf, "Force Open") == 0) {
         Serial.println("Force Open signal received.");
         // Handle Force Open signal
         sendMessage("Force Open received, releasing Fairing");
@@ -107,7 +108,7 @@ void awaitSignal() {
 }
 
 void FireBelow400() {
-  Serial.println("Waiting for altitude to drop below 400ft...");
+  Serial.println("Go signal received: Waiting for altitude to drop below 400ft...");
 
   // Loop until altitude drops below 400ft
     float altitudeMeters = bmp.readAltitude(SEALEVELPRESSURE_HPA); // Read altitude from BMP390 sensor in meters
@@ -121,17 +122,19 @@ void FireBelow400() {
       // Altitude is below 400ft
       // Activate pyro charge
       digitalWrite(13, HIGH);
-      Serial.println("Below 400ft, Pyro charge activated.");
+      Serial.println("Below 400ft, Activating pyro wire.");
       delay(5000);
       digitalWrite(13, LOW);
-      Serial.println("Pyro charge deactivated.");      
+      Serial.println("Pyro wire deactivated.");      
     }
     
-    delay(200); // Wait before checking altitude again
+    delay(100); // Wait before checking altitude again
 }
 
 
 void setup() {
+
+  Serial.begin(115200);
 
   Serial.println("Fairing Controller Startup!");
 
@@ -180,7 +183,7 @@ void setup() {
 
   //Test pyro channels
   Serial.println();
-  Serial.println("To finish up here, let's test the pyro channel");
+  Serial.println("To finish up here, let's test the pyro channel if it's not commented out");
   Serial.println();
   pinMode(PYRO, OUTPUT);
   digitalWrite(PYRO, LOW);
@@ -247,6 +250,8 @@ void setup() {
     while (1);
   }
   Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
+
+  Serial.print("Fairing setup complete")
 }
 
 void loop() {
@@ -262,19 +267,12 @@ void loop() {
       // Check if the received message is "Hello Fairing"
       if (strcmp((char*)buf, "Hello Fairing") == 0) {
         // Reply back "And hello to you, Huntsville"
-        sendMessage("And hello to you, Huntsville. Awaiting signal.");
+        sendMessage("And hello to you, Huntsville. Awaiting your signal.");
         awaitSignal();
       }
       
     } else {
       Serial.println("Receive failed");
     }
-      if (awaitSignal) {
-        // Flash white LED while waiting for signal
-        flashWhiteLED(1, 100); // Flash once every 100 milliseconds
-      } else {
-        uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-        uint8_t len = sizeof(buf);
-      }
   }
 }
