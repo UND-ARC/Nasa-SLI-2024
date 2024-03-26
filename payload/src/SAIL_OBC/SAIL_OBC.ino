@@ -9,15 +9,16 @@
 #include <SPI.h>
 #include <SdFat.h>
 #include <Adafruit_SPIFlash.h>
-//#include <Adafruit_BMP280.h> 
 #include <Adafruit_BNO055.h>
 #include <Adafruit_Sensor.h>
 #include <utility/imumaths.h>
 #include <Servo.h>
-// #include "I2Cdev.h"
-//#include "MPU6050.h"
 #include "Adafruit_BMP3XX.h"
 #include <RH_RF95.h>
+#include <Servo.h>
+
+Servo esc1; // Create a servo object to control the ESC
+Servo esc2; // Create a servo object to control the ESC
 
 //First, we'll set up the LEDs and buzzer
 int R_LED = 9;
@@ -30,15 +31,6 @@ Adafruit_BMP3XX bmp;
 double inHg = 29.92; // enter altimiter value
 double hPa = inHg * 33.8639;
 #define SEALEVELPRESSURE_HPA (hPa) // default: 1013.25
-
-//This is for the BMP390 barometer
-//Adafruit_BMP280 bmp;
-
-//This is for the MPU6050 IMU
-//MPU6050 accelgyro;
-//int16_t ax, ay, az;
-//int16_t gx, gy, gz;
-//#define OUTPUT_READABLE_ACCELGYRO
 
 // For the BNO055 IMU, Check I2C device address and correct line below (by default address is 0x29 or 0x28)
 //                                   id, address
@@ -70,7 +62,7 @@ Adafruit_FlashTransport_SPI flashTransport(FLASHCS_PIN, SPI);
 Adafruit_SPIFlash flash(&flashTransport);
 
 //This is for the pyro channel
-int Pyro1 = 21;
+int PYRO = 21;
 
 // This is for the RFM95 Radio
 #define RFM95_CS 10
@@ -97,6 +89,18 @@ void badTone() {
 
 void warningTone() {
   tone(Buzzer, 1000); delay(2000); noTone(Buzzer); delay(400);
+}
+
+void FailLED() {
+    digitalWrite(R_LED, LOW);
+    delay(1000);
+    digitalWrite(R_LED, HIGH);
+}
+
+void PassLED() {
+    digitalWrite(G_LED, LOW);
+    delay(1000);
+    digitalWrite(G_LED, HIGH);
 }
 
 /**************************************************************************/
@@ -190,6 +194,8 @@ Instructions) application note to avoid unnecessary magnetic influences. */
     Serial.print("! ");
   }
 
+
+
   /* Display the individual values */
   Serial.print("Sys:");
   Serial.print(system, DEC);
@@ -201,10 +207,70 @@ Instructions) application note to avoid unnecessary magnetic influences. */
   Serial.print(mag, DEC);
 }
 
+bool sendMessage(String message) {
+  if (rf95.send((uint8_t *)message.c_str(), message.length())) {
+    rf95.waitPacketSent();
+    Serial.println("Message sent successfully: " + message);
+    return true; // Message sent successfully 
+  } else {
+    Serial.println("Message failed: " + message);
+    return false; // Message not sent due to activation state
+  }
+}
+
+void awaitSignal() {
+  
+  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+  uint8_t len = sizeof(buf);
+  
+  Serial.println("Awaiting signal from Huntsville...");
+  if (rf95.waitAvailableTimeout(1000)) {
+    if (rf95.recv(buf, &len)) {
+      Serial.print("SAIL has received message: ");
+      Serial.println((char*)buf);
+      Serial.print("RSSI: ");
+      Serial.println(rf95.lastRssi(), DEC);
+      
+      // Check the received signal
+      if (strcmp((char*)buf, "Go") == 0) {
+        Serial.println("Go signal received.");
+        // Handle Go signal
+        sendMessage("Go signal received, firing at 400ft AGL");
+        FireBelow400; // Check altitude for pyro trigger
+         
+      } else if (strcmp((char*)buf, "Check") == 0) {        
+        Serial.println("Check signal received.");
+        // Handle Check signal
+        sendMessage("Fairing still reads you loud and clear, Huntsville")
+        
+      }  else if (strcmp((char*)buf, "Force Open") == 0) {
+        Serial.println("Force Open signal received.");
+        // Handle Force Open signal
+        sendMessage("Force Open received, releasing Fairing");
+        digitalWrite(13, HIGH);
+        Serial.println("Force Open, pyro firing.");
+        delay(5000);
+        digitalWrite(13, LOW);
+        Serial.println("End of Force Open, pyro off.");   
+               
+      } else if (strcmp((char*)buf, "Hello SAIL") == 0) {
+        // Reply back "And hello to you, Huntsville"
+        sendMessage("And hello to you, Huntsville. This is SAIL awaiting your signal");
+      }
+    } else {
+      Serial.println("Receive failed");
+    }
+  }
+}
+
 void setup() {
   while(!Serial){
     //wait for the serial port to be available, comment this out before running on battery power!!!!
   }
+
+  esc1.attach(22); // Attach the ESC signal cable to pin 1
+  esc2.attach(23);
+  
   Serial.println();Serial.println();
   Serial.println("Hey! I'm the SAIL flight computer! Let's get started.");
   goodTone();
@@ -252,6 +318,7 @@ void setup() {
      
     Serial.println("Found the BMP390 sensor! Here's some data...");
     goodTone();
+    passLED();
     for (int i = 0; i <= 10; i++) 
     {
     Serial.println();
@@ -303,13 +370,14 @@ void setup() {
     badTone();
   }
   Serial.println(bno.begin() ? "Found it! BNO055 connection successful." : "BNO055 connection failed :(");
+  goodTone();
+  passLED();
   delay(1000);
   Serial.println();
   delay(1000);
   if(bno.begin())
   {
     Serial.println("Here's a little bit of IMU data!");
-    goodTone();
     /* Display some basic information on this sensor */
     displaySensorDetails();
      /* Optional: Display current status */
@@ -408,6 +476,7 @@ void setup() {
   } else {
     Serial.println("Found an SD card! Here's some information about it.");
     goodTone();
+    passLED();
     delay(1000);
     Serial.println();
     Serial.print("Card type:         ");
@@ -458,50 +527,14 @@ void setup() {
   }
 
   /********** END OF SD CARD *********/
-  
-  /********** Now the FLASH **********/
-  /*
-  Serial.println("Looking for the SPI flash chip. Standby...");
-  if (flash.begin(CHIPSIZE)){
-    delay(500);
-    Serial.println("Great, looks like there's one here!");
-    Serial.println("Here's some info about it...");
-    Serial.println();
-    delay(1000);
-    uint8_t b1, b2, b3;
-    uint32_t JEDEC = flash.getJEDECID();
-    b1 = (JEDEC >> 16);
-    b2 = (JEDEC >> 8);
-    b3 = (JEDEC >> 0);
-    sprintf(printBuffer, "Manufacturer ID: %02xh\nMemory Type: %02xh\nCapacity: %02xh", b1, b2, b3);
-    Serial.println(printBuffer);
-    clearprintBuffer();
-    sprintf(printBuffer, "JEDEC ID: %04lxh", JEDEC);
-    Serial.println(printBuffer);
-    Serial.println();
-    Serial.println();
-    delay(1000);
-  }
-  else{
-    delay(500);
-    Serial.println();
-    Serial.println("Hmmm, looks like there's no flash chip here. Try checking the following:");
-    Serial.println(" - Is the chip soldered on in the correct orientation?");
-    Serial.println(" - Is the correct chip select pin defined in the SPIFlash constructor?");
-    Serial.println(" - Is the correct CHIPSIZE defined?");
-    delay(5000);
-    Serial.println();
-    Serial.println("Proceding with the rest of the startup process");
-    delay(1000);
-    Serial.println();
-  }
-*/
+
    // Custom SPI chip
    Serial.println("Looking for the SPI flash chip. Standby...");
    if(flash.begin()) 
    {
      delay(500);
-     goodTone();
+    goodTone();
+    passLED();
      Serial.println("Great, looks like there's one here!");
      Serial.println("Here's some info about it...");
      Serial.println();
@@ -541,30 +574,24 @@ void setup() {
   digitalWrite(RFM95_RST, HIGH);
   delay(10);
 
-  if(!rf95.init()) {
+  while (!rf95.init()) {
     Serial.println("LoRa radio init failed");
-    badTone();
-    delay(2000);
-    Serial.println("Proceeding with the rest of the startup process");
-    Serial.println();
-    }
-    else
-    {
-      Serial.println("LoRa radio init OK!");
-      goodTone();
-    }
+    Serial.println("Uncomment '#define SERIAL_DEBUG' in RH_RF95.cpp for detailed debug info");
+    while (1);
+  }
+  Serial.println("LoRa radio init OK!");
+  goodTone();
+  passLED();
+  delay(1000);
 
-      // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
+  // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
   if (!rf95.setFrequency(RF95_FREQ)) {
     Serial.println("setFrequency failed");
+    while (1);
   }
-  else {
-    Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
-    delay(500);
-    Serial.println("setFrequency success");
-    Serial.println();
-  }
-    delay(2000);
+  Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
+  delay(1000);
+
 
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
@@ -573,56 +600,74 @@ void setup() {
   // you can set transmitter powers from 5 to 23 dBm:
   
   
-  /*
+
   rf95.setTxPower(23, false);
 
-  Serial.println("Sending to rf95_server");
-  // Send a message to rf95_server
-  
-  char radiopacket[20] = "Hello World #      ";
-  itoa(packetnum++, radiopacket+13, 10);
-  Serial.print("Sending "); Serial.println(radiopacket);
-  radiopacket[19] = 0;
-  
-  Serial.println("Sending..."); delay(10);
-  rf95.send((uint8_t *)radiopacket, 20);
-
-  Serial.println("Waiting for packet to complete..."); delay(10);
-  rf95.waitPacketSent();
-  // Now wait for a reply
-  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
-
-  Serial.println("Waiting for reply..."); delay(10);
-  if (rf95.waitAvailableTimeout(1000))
-  { 
-    // Should be a reply message for us now   
-    if (rf95.recv(buf, &len))
-    {
-      Serial.print("Got reply: ");
-      Serial.println((char*)buf);
-      Serial.print("RSSI: ");
-      Serial.println(rf95.lastRssi(), DEC);    
-    }
-    else
-    {
-      Serial.println("Receive failed");
-    }
-   }
-    else
-    {
-      Serial.println("No reply, is there a listener around?");
-    }
-    delay(1000);
-   }
-  */
+  int16_t packetnum = 0;  // packet counter, we increment per xmission  
 
 
   /******* END OF RADIO TEST *******/
   
+
+  Serial.println("Now let's test the LEDs");
+  digitalWrite(R_LED, LOW);
+  delay(500);
+  digitalWrite(R_LED, HIGH);
+  delay(500);
+
+  digitalWrite(G_LED, LOW);
+  delay(500);
+  digitalWrite(G_LED, HIGH);
+  delay(500);
+
+  digitalWrite(B_LED, LOW);
+  delay(500);
+  digitalWrite(B_LED, HIGH);
+  delay(1000);
+  Serial.println("Great, the LEDs work. Done!");
+  delay(1000);
+
+
+  //************** TEST PYRO CHANNEL ****************/
+  Serial.println();
+  Serial.println("To finish up here, let's test the pyro channel");
+  Serial.println();
+  pinMode(PYRO, OUTPUT);
+  digitalWrite(PYRO, LOW);
+  delay(1000);
+
+          //The following code MUST BE REMOVED before you connect anything to the pyro channels
+          Serial.println("We'll now cycle through each channel, turning each one on for 2 seconds");
+          delay(1000);
+          digitalWrite(PYRO, HIGH);
+          Serial.println("Pyro 1 is on!");
+          warningTone();
+          delay(2000);
+          digitalWrite(PYRO, LOW);
+          Serial.println("Pyro 1 is off");
+          delay(2000);
+          /////////////////////////////////////////////////////////////////////////////////////
   
-  //Now we'll test the buzzer and the LEDs
-  Serial.println("Cool beans! Let's see if the buzzer works.");
+  Serial.println();
+  Serial.println("Done with the pyro channel testing");
+  Serial.println();
+  Serial.println();
+  delay(1000);
+
+  /***************** END OF PYRO TEST *******************/
+
+  /****************** ESC ARMING SEQUENCE *********************/
+  Serial.println("Time to arm the ESCs");
+  Serial.println("Sending lowest throttle for arming...");  
+  esc1.writeMicroseconds(1000); // Adjust this value if needed; 2000us usually indicates maximum throttle
+  esc2.writeMicroseconds(1000); // Adjust this value if needed; 2000us usually indicates maximum throttle
+  delay(2000); // Wait a bit longer for the ESC to recognize the arming sequence
+  Serial.println("ESC should be armed now.");
+  delay(1000);
+
+  /****************** END OF ARMING SEQUENCE *********************/
+  
+  Serial.println("SAIL Diagnostics Complete!");
   delay(500);
   tone(Buzzer, 2000); delay(50); noTone(Buzzer); delay(75);
   tone(Buzzer, 2000); delay(50); noTone(Buzzer); delay(200);
@@ -649,95 +694,47 @@ void setup() {
     slide = slide - 40;
   }
   noTone(Buzzer);
-
-  Serial.println("Now let's test the LEDs");
-  digitalWrite(R_LED, LOW);
-  delay(500);
-  digitalWrite(R_LED, HIGH);
-  delay(500);
-
-  digitalWrite(G_LED, LOW);
-  delay(500);
-  digitalWrite(G_LED, HIGH);
-  delay(500);
-
-  digitalWrite(B_LED, LOW);
-  delay(500);
-  digitalWrite(B_LED, HIGH);
-  delay(1000);
-  Serial.println("Great, the LEDs work. Done!");
-  delay(1000);
-
-
-  //Test pyro channels
-  Serial.println();
-  Serial.println("To finish up here, let's test the pyro channel");
-  Serial.println();
-  pinMode(Pyro1, OUTPUT);
-  digitalWrite(Pyro1, LOW);
-  delay(1000);
-
-          //The following code MUST BE REMOVED before you connect anything to the pyro channels
-          Serial.println("We'll now cycle through each channel, turning each one on for 2 seconds");
-          delay(1000);
-          digitalWrite(Pyro1, HIGH);
-          Serial.println("Pyro 1 is on!");
-          warningTone();
-          delay(2000);
-          digitalWrite(Pyro1, LOW);
-          Serial.println("Pyro 1 is off");
-          delay(2000);
-  
-  Serial.println();
-  Serial.println("Done with the pyro channel testing");
-  Serial.println();
-  Serial.println();
-  delay(1000);
-  Serial.println("SAIL Diagnostics Complete!");
   
 }
 
 void loop() {
 
+  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+  uint8_t len = sizeof(buf);
+
+  awaitSignal();
+  /*
+  if (rf95.waitAvailableTimeout(1000)) {
+    if (rf95.recv(buf, &len)) {
+      Serial.print("Fairing has received message: ");
+      Serial.println((char*)buf);
+      
+      // Check if the received message is "Hello Fairing"
+      if (strcmp((char*)buf, "Hello SAIL") == 0) {
+        // Reply back "And hello to you, Huntsville"
+        sendMessage("And hello to you, Huntsville. This is SAIL awaiting your signal.");
+        awaitSignal();
+      }
+      
+    } else {
+      Serial.println("Receive failed");
+    }
+  }
+  */
+  
   digitalWrite(R_LED, LOW);
-  delay(1000);
+  millis(1000);
   digitalWrite(R_LED, HIGH);
-  delay(1000);
+   millis(1000);
 
   digitalWrite(G_LED, LOW);
-  delay(1000);
+  millis(1000);
   digitalWrite(G_LED, HIGH);
-  delay(1000);
+  millis(1000);
 
   digitalWrite(B_LED, LOW);
-  delay(1000);
+  millis(1000);
   digitalWrite(B_LED, HIGH);
-  delay(1000);
+  millis(1000);
 
 }
-
-
-//The MPU6050 setup code is from the I2Cdev lib under the MIT licence
-//Copyright (c) 2011 Jeff Rowberg
-/*
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of the MPU6050 portion and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-This does not invalidate the header comments regarding the entire program,
-but refers only to the IMU portion of the code.
-*/
-
-/*
-void clearprintBuffer()
-{
-  for (uint8_t i = 0; i < 128; i++) {
-    printBuffer[i] = 0;
-  }
-} */

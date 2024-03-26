@@ -89,7 +89,7 @@ void awaitSignal() {
       } else if (strcmp((char*)buf, "Check") == 0) {        
         Serial.println("Check signal received.");
         // Handle Check signal
-        sendMessage("Still read you loud and clear, Huntsville");
+        sendMessage("Fairing still reads you loud and clear, Huntsville");
         
       }  else if (strcmp((char*)buf, "Force Open") == 0) {
         Serial.println("Force Open signal received.");
@@ -99,7 +99,11 @@ void awaitSignal() {
         Serial.println("Force Open, pyro firing.");
         delay(5000);
         digitalWrite(13, LOW);
-        Serial.println("End of Force Open, pyro off.");          
+        Serial.println("End of Force Open, pyro off.");     
+        
+      } else if (strcmp((char*)buf, "Hello Fairing") == 0) {
+        // Reply back "And hello to you, Huntsville"
+        sendMessage("And hello to you, Huntsville. This is Fairing awaiting your signal");
       }
     } else {
       Serial.println("Receive failed");
@@ -251,7 +255,7 @@ void setup() {
   }
   Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
 
-  Serial.print("Fairing setup complete")
+  Serial.print("Fairing setup complete");
 }
 
 void loop() {
@@ -259,20 +263,7 @@ void loop() {
   uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
   uint8_t len = sizeof(buf);
 
-  if (rf95.waitAvailableTimeout(1000)) {
-    if (rf95.recv(buf, &len)) {
-      Serial.print("Fairing has received message: ");
-      Serial.println((char*)buf);
+  awaitSignal();
       
-      // Check if the received message is "Hello Fairing"
-      if (strcmp((char*)buf, "Hello Fairing") == 0) {
-        // Reply back "And hello to you, Huntsville"
-        sendMessage("And hello to you, Huntsville. Awaiting your signal.");
-        awaitSignal();
-      }
-      
-    } else {
-      Serial.println("Receive failed");
-    }
   }
 }

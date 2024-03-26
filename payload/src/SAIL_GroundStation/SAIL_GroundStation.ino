@@ -77,7 +77,7 @@ void setup() {
   digitalWrite(G_LED, HIGH);
   digitalWrite(B_LED, HIGH);
 
-  Serial.begin(9600); // Adafruit example has 115200
+  Serial.begin(115200); // Adafruit example has 115200
   while (!Serial) delay(1);
   delay(100);
   
