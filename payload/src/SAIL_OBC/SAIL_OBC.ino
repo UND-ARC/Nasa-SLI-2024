@@ -74,17 +74,15 @@ RH_RF95 rf95(RFM95_CS);
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
 void goodTone() { 
-  tone(Buzzer, 988); delay(50); noTone(Buzzer); delay(75);
   tone(Buzzer, 988); delay(50); noTone(Buzzer); delay(200);
-  tone(Buzzer, 2093); delay(50); noTone(Buzzer); delay(75);
+  tone(Buzzer, 988); delay(50); noTone(Buzzer); delay(200);
   tone(Buzzer, 2093); delay(100); noTone(Buzzer); delay(400);
 }
 
 void badTone() {
-  tone(Buzzer, 2093); delay(50); noTone(Buzzer); delay(75);
   tone(Buzzer, 2093); delay(50); noTone(Buzzer); delay(200);
-  tone(Buzzer, 1000); delay(50); noTone(Buzzer); delay(75);
-  tone(Buzzer, 1000); delay(100); noTone(Buzzer); delay(400);
+  tone(Buzzer, 2093); delay(50); noTone(Buzzer); delay(200);
+  tone(Buzzer, 988); delay(50); noTone(Buzzer); delay(400);
 }
 
 void warningTone() {
@@ -101,6 +99,16 @@ void PassLED() {
     digitalWrite(G_LED, LOW);
     delay(1000);
     digitalWrite(G_LED, HIGH);
+
+bool sendMessage(String message) {
+  if (rf95.send((uint8_t *)message.c_str(), message.length())) {
+    rf95.waitPacketSent();
+    Serial.println("Message sent successfully: " + message);
+    return true; // Message sent successfully 
+  } else {
+    Serial.println("Message failed: " + message);
+    return false; // Message not sent due to activation state
+  }
 }
 
 /**************************************************************************/
@@ -274,7 +282,7 @@ void setup() {
   Serial.println();Serial.println();
   Serial.println("Hey! I'm the SAIL flight computer! Let's get started.");
   goodTone();
-  delay(500);
+  delay(200);
   badTone();
   Serial.println();Serial.println();
   delay(1000);
@@ -291,11 +299,11 @@ void setup() {
 
   //Now Barometer
   Serial.println("First, let's see if the BMP390 Barometer is connected. Standby...");
-  delay(2000);
+  delay(1000);
   if (!bmp.begin_I2C()) {
     Serial.println("Could not find the BMP390 sensor :( Check your soldering and inspect for bad connections");
     badTone();
-    delay(3000);
+    delay(2000);
     Serial.println();
     Serial.println("Proceeding with the rest of the startup process");
     Serial.println();
@@ -339,30 +347,6 @@ void setup() {
     delay(200);
   }
 }
-
- /********* 
-  //Now the IMU
-  //Serial.println("Now we'll look for the the MPU6050 IMU. Standby...");
- 
-  accelgyro.initialize();
-  Serial.println(accelgyro.testConnection() ? "Found it! MPU6050 connection successful." : "MPU6050 connection failed :(");
-  delay(1000);
-  Serial.println();
-  Serial.println("Here's a little bit of data!");
-  for (int i = 0; i <= 20; i++) {
-    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    Serial.print("a/g:\t");
-    Serial.print(ax); Serial.print("\t");
-    Serial.print(ay); Serial.print("\t");
-    Serial.print(az); Serial.print("\t");
-    Serial.print(gx); Serial.print("\t");
-    Serial.print(gy); Serial.print("\t");
-    Serial.println(gz);
-    delay(20);
-  }
-  Serial.println("Great! Onward to the SD card");
-  delay(1000);
-*******/
 
   Serial.println("Now we'll look for the the BNO055 IMU. Standby...");
   bno.begin();
@@ -458,7 +442,7 @@ void setup() {
     /********** END OF IMU *************/
 
   //Now the SD card
-  delay(2000);
+  delay(1000);
   Serial.print("Looking for an SD card. Standby...");
   if (!card.init(SPI_HALF_SPEED, SDchipSelect)) {
     Serial.println();
@@ -468,7 +452,7 @@ void setup() {
     Serial.println("* is the chipselect pin correct?");
     badTone();
     Serial.println();
-    delay(3000);
+    delay(2000);
     Serial.println();
     Serial.println("We'll continue with the startup without the SD card now :(");
     Serial.println();
@@ -544,7 +528,7 @@ void setup() {
      Serial.print(flash.size() / 1024);
      Serial.println(" KB");
      Serial.println();
-     delay(2000);        
+     delay(1000);        
    }
    else{
       delay(500);
@@ -553,10 +537,10 @@ void setup() {
       Serial.println(" - Is the chip soldered on in the correct orientation?");
       Serial.println(" - Is the correct chip select pin defined?");
       badTone();
-      delay(5000);
+      delay(2000);
       Serial.println();
       Serial.println("Proceding with the rest of the startup process");
-      delay(2000);
+      delay(1000);
       Serial.println();
   }
 

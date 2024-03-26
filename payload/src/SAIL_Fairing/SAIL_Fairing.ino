@@ -9,7 +9,7 @@
 #define RF95_FREQ 915.0
 
 //This is for the pyro channel
-int PYRO = 13;
+int PYRO = 10;
 
 //Set up the LEDs
 int R_LED = 5;
@@ -141,10 +141,11 @@ void setup() {
   Serial.begin(115200);
 
   Serial.println("Fairing Controller Startup!");
-
+  delay(1000);
+  
   // Barometer Check
   Serial.println("Let's see if the BMP390 Barometer is connected. Standby...");
-  delay(2000);
+  delay(4000);
   if (!bmp.begin_I2C()) {
     Serial.println("Could not find the BMP390 sensor :( Check your soldering and inspect for bad connections");
     FailLED();
@@ -193,19 +194,7 @@ void setup() {
   digitalWrite(PYRO, LOW);
   delay(1000);
   
-          //////////////////////////////////////////////////////////////////////////////////////////
-          //The following code MUST BE REMOVED before you connect anything to the pyro channels
-          Serial.println("We'll now cycle through each channel, turning each one on for 2 seconds");
-          delay(1000);
-          digitalWrite(PYRO, HIGH);
-          Serial.println("PYRO is on!");
-          flashRedLED(5,200);
-          delay(2000);
-          digitalWrite(PYRO, LOW);
-          Serial.println("Pyro is off");
-          digitalWrite(R_LED, HIGH);
-          delay(2000);
-          //////////////////////////////////////////////////////////////////////////////////////////
+
           
   Serial.println();
   Serial.println("Done with the pyro channel testing");
@@ -266,4 +255,17 @@ void loop() {
   awaitSignal();
       
   }
+            //////////////////////////////////////////////////////////////////////////////////////////
+          //The following code MUST BE REMOVED before you connect anything to the pyro channels
+          Serial.println("We'll now cycle through each channel, turning each one on for 2 seconds");
+          delay(1000);
+          digitalWrite(PYRO, HIGH);
+          Serial.println("PYRO is on!");
+          flashRedLED(5,200);
+          delay(5000);
+          digitalWrite(PYRO, LOW);
+          Serial.println("Pyro is off");
+          digitalWrite(R_LED, HIGH);
+          delay(5000);
+          //////////////////////////////////////////////////////////////////////////////////////////
 }
