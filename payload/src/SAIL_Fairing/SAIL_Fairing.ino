@@ -13,6 +13,8 @@
 
 #define RF95_FREQ 915.0
 
+#define SIGNAL_TIMEOUT 200 // Timeout value in milliseconds (2 seconds) NEW
+
 unsigned long lastAltitudeCheckTime = 0; // Variable to store the last time altitude was checked
 
 //This is for the pyro channel
@@ -97,10 +99,14 @@ void awaitSignal(int flashDuration) {
   unsigned long signalStartTime = millis(); // Store the start time of waiting for signal
   
   // Flush the receive buffer to discard any previous messages
-  rf95.recv(nullptr, nullptr);  
+  rf95.recv(nullptr, nullptr);  // NEW
 
-  // Wait for a signal
+  // Wait for a signal with timeout (NEW)
   while (!rf95.available()) {
+    if (millis() - signalStartTime > SIGNAL_TIMEOUT) { // Timeout
+      Serial.println("Timeout waiting for signal");
+      return;
+    }
     flashWhiteLED(flashDuration); // Flash white LED while awaiting signal
     Serial.println("Awaiting signal from Huntsville...");
   }
