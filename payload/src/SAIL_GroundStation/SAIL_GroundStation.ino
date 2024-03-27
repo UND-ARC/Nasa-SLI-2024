@@ -119,10 +119,6 @@ void setup() {
   sendMessage("Hello SAIL");
   delay(500);
 
-  // Send a message to Fairing
-  sendMessage("Hello Fairing");
-  delay(500);
-  
   // After sending "Hello SAIL" message
   Serial.println("Waiting for SAIL to reply...");
   uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
@@ -140,9 +136,12 @@ void setup() {
   } else {
     Serial.println("No reply, is SAIL around?");  // NTS: Do not want this to loop
   }
+
+  // Send a message to Fairing
+  sendMessage("Hello Fairing");
+  delay(500);
   
-  delay(1000);
-  
+
   // After sending "Hello Fairing" message
   Serial.println("Waiting for reply from Fairing...");
   if (rf95.waitAvailableTimeout(1000)) {

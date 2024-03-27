@@ -96,6 +96,9 @@ bool sendMessage(String message) {
 void awaitSignal(int flashDuration) {
   unsigned long signalStartTime = millis(); // Store the start time of waiting for signal
   
+  // Flush the receive buffer to discard any previous messages
+  rf95.recv(nullptr, nullptr);  
+
   // Wait for a signal
   while (!rf95.available()) {
     flashWhiteLED(flashDuration); // Flash white LED while awaiting signal
@@ -105,11 +108,14 @@ void awaitSignal(int flashDuration) {
   // Signal received
   uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
   uint8_t len = sizeof(buf);
+  
   if (rf95.recv(buf, &len)) {
     Serial.print("Received signal: ");
     Serial.println((char*)buf);
     Serial.print("RSSI: ");
     Serial.println(rf95.lastRssi(), DEC);
+    Serial.print("Received message length: ");
+    Serial.println(len);
     
     // Check the received signal
     if (strcmp((char*)buf, "Go") == 0) {
@@ -284,14 +290,14 @@ void setup() {
   }
   Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
 
-  Serial.print("Fairing setup complete");
+  Serial.println("Fairing setup complete");
   flashGreenLED(times, duration);
-  sendMessage("Come in Huntsville, this is Fairing");
+  sendMessage("This is Fairing");
 }
 
 void loop() {
 
   awaitSignal(2000);
-  delay(200); // need???
+  delay(300); // need???
 
 }
