@@ -13,7 +13,7 @@
 
 #define RF95_FREQ 915.0
 
-#define SIGNAL_TIMEOUT 200 // Timeout value in milliseconds (2 seconds) NEW
+#define SIGNAL_TIMEOUT 5000 // Timeout value in milliseconds (2 seconds) NEW
 
 unsigned long lastAltitudeCheckTime = 0; // Variable to store the last time altitude was checked
 
@@ -31,7 +31,7 @@ int duration = 500;
 
 //This is for the BMP390 barometer
 Adafruit_BMP3XX bmp;
-double inHg = 29.92; // enter altimiter value
+double inHg = 30.07; // enter current location altimiter value
 double hPa = inHg * 33.8639;
 #define SEALEVELPRESSURE_HPA (hPa) // default: 1013.25
 
@@ -84,7 +84,7 @@ void solidWhiteLED(int times, int duration) {
 /******** END OF LED FUNCTIONS **********/
 
 bool sendMessage(String message) {
-  if (rf95.send((uint8_t *)message.c_str(), message.length())) {
+  if (rf95.send((uint8_t *)message.c_str(), message.length())) {  // message.length()+1?
     rf95.waitPacketSent();
     Serial.println("Message sent successfully: " + message);
     solidWhiteLED(times, duration);
@@ -127,20 +127,20 @@ void awaitSignal(int flashDuration) {
     if (strcmp((char*)buf, "Go") == 0) {
       Serial.println("Go signal received.");
       // Handle Go signal
-      sendMessage("Go signal received, firing at 400ft AGL");
+      sendMessage("Go signal received, firing at 400ft AGL.");
       FireBelow400(); // Check altitude for pyro trigger
       
     } else if (strcmp((char*)buf, "Check") == 0) {        
       Serial.println("Check signal received.");
       // Handle Check signal
-      sendMessage("Fairing still reads you loud and clear, Huntsville");
+      sendMessage("Fairing checking in.");
       
     } else if (strcmp((char*)buf, "Force Open") == 0) {
       Serial.println("Force Open signal received.");
       // Handle Force Open signal
-      sendMessage("Force Open received, releasing Fairing");
+      sendMessage("Force Open received, releasing Fairing.");
       digitalWrite(13, HIGH);
-      Serial.println("Force Open, pyro firing.");
+      Serial.println("Force Open, pyro firing for 5s.");
       delay(5000);
       digitalWrite(13, LOW);
       Serial.println("End of Force Open, pyro off.");     
@@ -152,10 +152,10 @@ void awaitSignal(int flashDuration) {
   }
 }
 
-void FireBelow400() {
+void FireBelow400() {   // Need to be able to receive force-open signal
   Serial.println("Go signal received: Waiting for altitude to drop below 400ft...");
   while (true) {
-    if (millis() - lastAltitudeCheckTime >= 100) { // Check altitude every 100 milliseconds
+    if (millis() - lastAltitudeCheckTime >= 200) { // Check altitude every 200 milliseconds
       lastAltitudeCheckTime = millis(); // Update lastAltitudeCheckTime
       float altitudeMeters = bmp.readAltitude(SEALEVELPRESSURE_HPA); // Read altitude from BMP390 sensor in meters
       float altitudeFeet = altitudeMeters * 3.281; // Convert altitude to feet
